@@ -1,11 +1,12 @@
 import React from 'react';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, CheckCheck, Info } from 'lucide-react';
 
 export interface MessageType {
   id: string;
   content: string;
   isUser: boolean;
   timestamp: Date;
+  sent?: boolean; // true if sent, false if not
 }
 
 interface MessageProps {
@@ -26,14 +27,25 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
       </div>
       
       <div className={`max-w-[70%] ${message.isUser ? 'text-right' : ''}`}>
-        <div className={`inline-block px-4 py-3 rounded-2xl ${
+        <div className={`inline-block px-4 py-3 rounded-2xl relative ${
           message.isUser 
-            ? 'bg-blue-600 text-white rounded-br-md' 
-            : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+            ? 'bg-black text-white border border-gray-700 rounded-br-md' 
+            : 'bg-black text-white border border-gray-700 rounded-bl-md'
         }`}>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1">{message.content}</p>
+          {message.isUser && (
+            <span className="absolute bottom-1 right-2 flex items-center">
+              {message.sent === false ? (
+                <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-orange-300 bg-black text-orange-300">
+                  <Info className="w-2 h-2" />
+                </span>
+              ) : (
+                <CheckCheck className="w-3 h-3 text-orange-300" />
+              )}
+            </span>
+          )}
         </div>
-        <p className="text-xs text-gray-500 mt-1 px-1">
+        <p className="text-xs text-orange-300 mt-1 px-1">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>

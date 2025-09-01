@@ -43,15 +43,19 @@ function App() {
   }, []);
 
   return (
-  <div className="h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-50">
-      <Header onToggleSettings={toggleSettings} isSettingsOpen={isSettingsOpen} />
+  <div className="h-screen bg-gray-900 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-orange-400 scrollbar-track-gray-900">
+      <div className="sticky top-0 z-30 bg-white shadow">
+        <Header onToggleSettings={toggleSettings} isSettingsOpen={isSettingsOpen} />
+      </div>
       
       <div className="flex-1 flex relative">
         <div className={`flex-1 flex flex-col transition-all duration-300 ${
           isSettingsOpen ? 'mr-80' : 'mr-0'
         }`}>
           <ChatArea messages={messages} isTyping={isTyping} />
-          <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} />
+          <div className="sticky bottom-0 z-20 bg-white shadow-md">
+            <ChatInput onSendMessage={handleSendMessage} />
+          </div>
         </div>
         
         <SettingsPanel 

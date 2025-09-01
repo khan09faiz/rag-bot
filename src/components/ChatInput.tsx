@@ -46,7 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
+  <div className="border-t border-gray-900 bg-black p-4">
       <div className="max-w-4xl mx-auto">
         {/* File Upload Area */}
         {/* Show file upload if no files uploaded */}
@@ -115,8 +115,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
               onClick={() => setShowFileUpload(!showFileUpload)}
               className={`flex-shrink-0 p-3 rounded-xl transition-all duration-200 ${
                 showFileUpload 
-                  ? 'bg-emerald-500 text-white' 
-                  : 'bg-gray-100 text-gray-500 hover:bg-blue-600 hover:text-white'
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-800 text-orange-300 hover:bg-orange-600 hover:text-white'
               }`}
             >
               <Paperclip className="w-5 h-5" />
@@ -137,7 +137,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
               <button
                 type="submit"
                 disabled={disabled || (!message.trim() && files.length === 0)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm flex items-center justify-center"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed transition-all duration-200 shadow-sm flex items-center justify-center"
               >
                 <Send className="w-4 h-4" />
               </button>

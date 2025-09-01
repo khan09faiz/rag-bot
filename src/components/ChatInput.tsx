@@ -46,23 +46,50 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
   };
 
   return (
-  <div className="border-t border-gray-900 bg-black p-4">
+  <div className="border-t border-gray-900 bg-gray-900 p-4">
       <div className="max-w-4xl mx-auto">
         {/* File Upload Area */}
         {/* Show file upload if no files uploaded */}
-        {showFileUpload && files.length === 0 && ( 
-          <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200 relative">
+        {showFileUpload && files.length === 0 && (
+          <div className="mb-4 p-2 bg-gray-900 rounded-xl border border-gray-700 relative flex flex-col items-center justify-center">
             {/* Cross icon to close upload tab, always visible at top-right edge */}
             <button
               type="button"
-              className="absolute -top-3 -right-3 p-2 bg-white border border-gray-300 shadow rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 z-10"
+              className="absolute -top-3 -right-3 p-2 bg-black border border-gray-700 shadow rounded-full text-gray-400 hover:text-orange-500 hover:bg-gray-800 z-10"
               onClick={() => setShowFileUpload(false)}
               aria-label="Close upload tab"
               style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
             </button>
-            <FileUpload files={files} onFilesChange={setFiles} />
+            <div className="w-full flex flex-col items-center justify-center gap-2">
+              <label htmlFor="file-upload" className="flex items-center gap-2 px-3 py-2 bg-black border border-gray-700 rounded-lg text-orange-400 cursor-pointer hover:bg-gray-800 transition-all duration-200 text-sm font-medium shadow">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12V8a4 4 0 014-4h8a4 4 0 014 4v4M16 12v4M8 12v4" /></svg>
+                Upload File
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                onChange={e => {
+                  const selectedFiles = Array.from(e.target.files || []);
+                  const newFiles = selectedFiles.map(file => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    preview: (file.type.startsWith('image/') || file.type === 'application/pdf') ? URL.createObjectURL(file) : undefined
+                  }));
+                  setFiles([...files, ...newFiles]);
+                }}
+                className="hidden"
+              />
+              <div className="w-full mt-2 flex flex-col items-center justify-center">
+                <div className="w-full border-2 border-dashed border-orange-400 rounded-lg p-4 text-center text-sm text-gray-300 bg-black cursor-pointer hover:border-orange-500 transition-all duration-200">
+                  Drag & Drop files here
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -109,20 +136,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="relative">
-          <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              onClick={() => setShowFileUpload(!showFileUpload)}
-              className={`flex-shrink-0 p-3 rounded-xl transition-all duration-200 ${
-                showFileUpload 
-                  ? 'bg-orange-500 text-white' 
-                  : 'bg-gray-800 text-orange-300 hover:bg-orange-600 hover:text-white'
-              }`}
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-
-            <div className="flex-1 relative">
+          <div className="flex items-center">
+            <div className="flex flex-1 items-center bg-white border border-gray-300 rounded-xl shadow-sm px-2 py-1">
+              <button
+                type="button"
+                onClick={() => setShowFileUpload(!showFileUpload)}
+                className={`flex-shrink-0 p-2 rounded-lg transition-all duration-200 mr-2 ${
+                  showFileUpload 
+                    ? 'bg-orange-500 text-white' 
+                    : 'bg-gray-100 text-orange-400 hover:bg-orange-600 hover:text-white'
+                }`}
+                aria-label="Attach file"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
               <textarea
                 ref={textareaRef}
                 value={message}
@@ -130,14 +157,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
                 onKeyDown={handleKeyDown}
                 placeholder="Type your message..."
                 disabled={disabled}
-                className="w-full bg-white text-gray-800 placeholder-gray-400 rounded-xl px-4 py-3 pr-12 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300 transition-all duration-200 shadow-sm"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                className="flex-1 bg-transparent text-gray-800 placeholder-gray-400 px-2 py-2 resize-none focus:outline-none focus:ring-0 border-none"
+                style={{ minHeight: '40px', maxHeight: '120px' }}
               />
-              
               <button
                 type="submit"
                 disabled={disabled || (!message.trim() && files.length === 0)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed transition-all duration-200 shadow-sm flex items-center justify-center"
+                className="ml-2 p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm flex items-center justify-center"
+                aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
               </button>

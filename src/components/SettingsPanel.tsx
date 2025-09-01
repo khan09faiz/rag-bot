@@ -60,20 +60,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </p>
           </div>
 
-          {/* Additional Settings Placeholder */}
-          <div className="border-t border-gray-200 pt-4 mt-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Model Settings</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Model</span>
-                <span className="text-sm text-blue-600 font-medium">GPT-4</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Max Tokens</span>
-                <span className="text-sm text-gray-500">4096</span>
-              </div>
-            </div>
-          </div>
+          {/* Model Settings removed for cleaner UI */}
         </div>
       </div>
     </div>

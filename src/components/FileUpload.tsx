@@ -30,7 +30,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files, onFilesChange }) 
       name: file.name,
       size: file.size,
       type: file.type,
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+  preview: (file.type.startsWith('image/') || file.type === 'application/pdf') ? URL.createObjectURL(file) : undefined
     }));
     
     onFilesChange([...files, ...newFiles]);
@@ -53,7 +53,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files, onFilesChange }) 
       name: file.name,
       size: file.size,
       type: file.type,
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+  preview: (file.type.startsWith('image/') || file.type === 'application/pdf') ? URL.createObjectURL(file) : undefined
     }));
     
     onFilesChange([...files, ...newFiles]);
@@ -128,7 +128,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files, onFilesChange }) 
               {files.length} file{files.length > 1 ? 's' : ''}
             </span>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-50">
             {files.map((file) => (
               <div 
                 key={file.id} 
@@ -161,7 +161,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files, onFilesChange }) 
                 )}
                 
                 <button
-                  onClick={() => removeFile(file.id)}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile(file.id);

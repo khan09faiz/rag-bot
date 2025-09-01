@@ -19,7 +19,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isTyping }) => {
   }, [messages, isTyping]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-gray-100">
+  <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-gray-100 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-50">
       <div className="max-w-4xl mx-auto p-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-20">

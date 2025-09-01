@@ -43,7 +43,7 @@ function App() {
   }, []);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex flex-col overflow-hidden">
+  <div className="h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-50">
       <Header onToggleSettings={toggleSettings} isSettingsOpen={isSettingsOpen} />
       
       <div className="flex-1 flex relative">

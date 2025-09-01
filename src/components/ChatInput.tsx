@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { FileUpload, FileItem } from './FileUpload';
+import { FilePreviewModal } from './FilePreviewModal';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: FileItem[]) => void;
@@ -10,6 +11,8 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled }) => {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -19,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
       onSendMessage(message.trim(), files);
       setMessage('');
       setFiles([]);
-      setShowFileUpload(false);
+  // Do not hide file upload after sending message, keep it toggled by user
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
@@ -46,15 +49,67 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
     <div className="border-t border-gray-200 bg-white p-4">
       <div className="max-w-4xl mx-auto">
         {/* File Upload Area */}
-        {showFileUpload && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        {/* Show file upload if no files uploaded */}
+        {showFileUpload && files.length === 0 && ( 
+          <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200 relative">
+            {/* Cross icon to close upload tab, always visible at top-right edge */}
+            <button
+              type="button"
+              className="absolute -top-3 -right-3 p-2 bg-white border border-gray-300 shadow rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 z-10"
+              onClick={() => setShowFileUpload(false)}
+              aria-label="Close upload tab"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+            </button>
             <FileUpload files={files} onFilesChange={setFiles} />
           </div>
         )}
 
+        {/* Show uploaded PDF above chat input, allow remove and preview */}
+        {files.length > 0 && files.map(file => file.type === 'application/pdf' ? (
+          <div key={file.id} className="mb-4 flex items-center bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+            <iframe
+              src={file.preview}
+              title={file.name}
+              className="w-32 h-20 rounded border border-gray-200 mr-4"
+              style={{ minWidth: '120px', minHeight: '80px' }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <button
+                  className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                  onClick={() => {
+                    setPreviewFile(file);
+                    setIsModalOpen(true);
+                  }}
+                >Preview</button>
+        {/* PDF Preview Modal */}
+        <FilePreviewModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setPreviewFile(null);
+          }}
+          file={previewFile}
+        />
+                <button
+                  className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100"
+                    onClick={() => {
+                      setFiles(prev => prev.filter(f => f.id !== file.id));
+                      // Always keep chat input visible, do not show upload option again
+                      setShowFileUpload(false);
+                    }}
+                >Remove</button>
+              </div>
+            </div>
+          </div>
+        ) : null)}
+
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="relative">
-          <div className="flex items-end space-x-3">
+          <div className="flex items-center space-x-3">
             <button
               type="button"
               onClick={() => setShowFileUpload(!showFileUpload)}
@@ -82,7 +137,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
               <button
                 type="submit"
                 disabled={disabled || (!message.trim() && files.length === 0)}
-                className="absolute right-2 bottom-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm flex items-center justify-center"
               >
                 <Send className="w-4 h-4" />
               </button>

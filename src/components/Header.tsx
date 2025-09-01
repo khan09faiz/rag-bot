@@ -8,7 +8,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSettings, isSettingsOpen }) => {
   return (
-  <header className="bg-gray-950 border-b border-gray-900 px-6 py-4 flex items-center justify-between shadow-sm">
+  <header className="bg-gray-900 border-b border-gray-900 px-6 py-4 flex items-center justify-between shadow-sm">
       <div className="flex items-center space-x-3">
         <div className="flex items-center justify-center w-8 h-8 bg-orange-500 rounded-lg">
           <MessageSquare className="w-5 h-5 text-white" />

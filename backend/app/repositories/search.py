@@ -1,14 +1,14 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+import math, time
 
 class SearchRepository:
     def __init__(self, session: Session):
         self.session = session
 
+    # --- Low level primitives -------------------------------------------------
     def vector_search(self, embedding: list[float], top_k: int) -> List[Dict[str, Any]]:
-        # pgvector requires vector <-> vector; passing a bare array param becomes numeric[] and fails.
-        # Build an inline vector literal safely (embedding values are floats from model).
         sql = text(
             """
             SELECT c.id, c.text, c.page, c.section, d.title,
@@ -25,17 +25,18 @@ class SearchRepository:
         out: List[Dict[str, Any]] = []
         for r in rows:
             dist = r["distance"]
-            score = 1 / (1 + dist)
-            out.append(
-                {
-                    "id": str(r["id"]),
-                    "text": r["text"],
-                    "page": r["page"],
-                    "section": r["section"],
-                    "title": r["title"],
-                    "score": score,
-                }
-            )
+            # Convert L2 distance (for pgvector default) into a bounded similarity proxy.
+            score = 1 / (1 + float(dist))
+            out.append({
+                "id": str(r["id"]),
+                "text": r["text"],
+                "page": r["page"],
+                "section": r["section"],
+                "title": r["title"],
+                "score": score,
+                "distance": float(dist),
+                "source": "vector"
+            })
         return out
 
     def lexical_search(self, query: str, top_k: int) -> List[Dict[str, Any]]:
@@ -54,16 +55,16 @@ class SearchRepository:
         rows = res.mappings().all()
         out: List[Dict[str, Any]] = []
         for r in rows:
-            out.append(
-                {
-                    "id": str(r["id"]),
-                    "text": r["text"],
-                    "page": r["page"],
-                    "section": r["section"],
-                    "title": r["title"],
-                    "score": float(r["rank"]) if r["rank"] else 0.0,
-                }
-            )
+            out.append({
+                "id": str(r["id"]),
+                "text": r["text"],
+                "page": r["page"],
+                "section": r["section"],
+                "title": r["title"],
+                "score": float(r["rank"]) if r["rank"] else 0.0,
+                "distance": None,
+                "source": "lexical"
+            })
         return out
 
     def rrf(self, lists: List[List[Dict[str, Any]]], k: int) -> List[Dict[str, Any]]:
@@ -98,6 +99,76 @@ class SearchRepository:
                     best_idx = i
             selected.append(remaining.pop(best_idx))
         return selected
+
+    # --- Orchestration --------------------------------------------------------
+    def hybrid_retrieve(
+        self,
+        query: str,
+        query_embedding: list[float],
+        top_k: int,
+        use_lexical: bool,
+        rrf_k: int,
+        mmr_lambda: float,
+        final_k: int,
+        threshold: float,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Run vector (and optionally lexical) retrieval, fuse, filter, then MMR + trim.
+
+        Returns: (final_context_chunks, stats)
+        stats keys: {'vector', 'lexical', 'fused', 'after_threshold', 'final', 'timings'}
+        """
+        t_start = time.perf_counter()
+        t_vec0 = time.perf_counter()
+        vec = self.vector_search(query_embedding, top_k)
+        t_vec1 = time.perf_counter()
+        lists: List[List[Dict[str, Any]]] = [vec]
+        lex: List[Dict[str, Any]] = []
+        if use_lexical:
+            t_lex0 = time.perf_counter()
+            lex = self.lexical_search(query, top_k)
+            t_lex1 = time.perf_counter()
+            lists.append(lex)
+        else:
+            t_lex0 = t_lex1 = None  # type: ignore
+        if len(lists) > 1:
+            fused = self.rrf(lists, rrf_k)
+        else:
+            fused = vec
+        # Dedup identical text early
+        seen_text = set()
+        deduped: List[Dict[str, Any]] = []
+        for item in fused:
+            key = item['text'][:500]
+            if key in seen_text:
+                continue
+            seen_text.add(key)
+            deduped.append(item)
+        # Apply similarity threshold (vector-derived score only); keep lexical-only items if hybrid but mark them low
+        filtered: List[Dict[str, Any]] = []
+        for item in deduped:
+            if item['source'] == 'vector' and item['score'] >= threshold:
+                filtered.append(item)
+            elif item['source'] == 'lexical' and use_lexical:
+                filtered.append(item)
+        if not filtered:
+            # fallback: use top items ignoring threshold
+            filtered = deduped[:final_k]
+        # MMR to reduce redundancy
+        mmr_applied = self.mmr(filtered, mmr_lambda, final_k)
+        t_end = time.perf_counter()
+        stats = {
+            'vector': len(vec),
+            'lexical': len(lex),
+            'fused': len(fused),
+            'after_threshold': len(filtered),
+            'final': len(mmr_applied),
+            'timings': {
+                'vector_ms': int((t_vec1 - t_vec0) * 1000),
+                'lexical_ms': int(((t_lex1 - t_lex0) * 1000) if use_lexical and t_lex0 and t_lex1 else 0),
+                'total_retrieve_ms': int((t_end - t_start) * 1000),
+            }
+        }
+        return mmr_applied, stats
 
 def similarity(a: Dict[str, Any], b: Dict[str, Any]) -> float:
     # crude textual overlap similarity

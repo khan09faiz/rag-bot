@@ -17,7 +17,6 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     repo = SearchRepository(db)
     qrepo = QueryRepository(db)
     query_vec = embed_query(payload.query)
-    # log query (store cleaned text + vector)
     from app.utils.clean import clean_for_embedding
     cleaned = clean_for_embedding(payload.query)
     try:
@@ -25,20 +24,20 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         db.commit()
     except Exception:
         db.rollback()
-    t0 = time.perf_counter()
-    vec_results = repo.vector_search(query_vec, settings.TOP_K)
-    lists = [vec_results]
-    if payload.hybrid:
-        lex = repo.lexical_search(payload.query, settings.TOP_K)
-        lists.append(lex)
-    if len(lists) > 1:
-        fused = repo.rrf(lists, settings.RRF_K)
-    else:
-        fused = vec_results
-    filtered = [c for c in fused if c['score'] >= settings.SIMILARITY_THRESHOLD or payload.hybrid]
-    top_context = filtered[:settings.TOP_M_CONTEXT]
-    if not top_context:
-        # fallback: answer directly without citations
+    # Orchestrated retrieval (hybrid + MMR + threshold)
+    top_k = min(payload.top_k, settings.TOP_K)
+    context_chunks, rstats = repo.hybrid_retrieve(
+        query=payload.query,
+        query_embedding=query_vec,
+        top_k=top_k,
+        use_lexical=payload.hybrid and settings.HYBRID_RETRIEVAL,
+        rrf_k=settings.RRF_K,
+        mmr_lambda=settings.MMR_LAMBDA,
+        final_k=settings.TOP_M_CONTEXT,
+        threshold=settings.SIMILARITY_THRESHOLD,
+    )
+    t0 = time.perf_counter()  # baseline for subsequent timing (LLM start measured later)
+    if not context_chunks:
         llm = ChatGoogleGenerativeAI(model=settings.GEMINI_CHAT_MODEL, google_api_key=settings.GEMINI_API_KEY, streaming=True, convert_system_message_to_human=True)
         async def direct_stream():
             from langchain.schema import HumanMessage, SystemMessage
@@ -46,11 +45,13 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
             async for chunk in llm.astream([SystemMessage(content=system_prompt), HumanMessage(content=payload.query)]):
                 if hasattr(chunk, 'content') and chunk.content:
                     yield f"data: {json.dumps({'delta': chunk.content})}\n\n"
+            # include retrieval stats even if empty
+            yield f"data: {json.dumps({'citations': [], 'timings': {'retrieve_ms': rstats['timings']['total_retrieve_ms'], 'llm_ms': None}, 'retrieval': rstats})}\n\n"
         return StreamingResponse(direct_stream(), media_type='text/event-stream')
 
     numbered = []
     citation_map = []
-    for i, c in enumerate(top_context, start=1):
+    for i, c in enumerate(context_chunks, start=1):
         numbered.append(f"[Source {i}]\n{c['text'][:2000]}")
         citation_map.append({"id": i, "title": c['title'], "page": c['page'], "url": None})
     context_block = "\n\n".join(numbered)
@@ -73,7 +74,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         output = ''.join(final_text)
         used_ids = sorted({m for m in re.findall(r"\[Source (\d+)\]", output)})
         used = [c for c in citation_map if str(c['id']) in used_ids]
-        timings = {"retrieve_ms": int((start_llm - t0) * 1000), "llm_ms": llm_ms}
-        yield f"data: {json.dumps({'citations': used, 'timings': timings})}\n\n"
+        timings = {"retrieve_ms": rstats['timings']['total_retrieve_ms'], "llm_ms": llm_ms}
+        yield f"data: {json.dumps({'citations': used, 'timings': timings, 'retrieval': rstats})}\n\n"
 
     return StreamingResponse(event_stream(), media_type='text/event-stream')
